@@ -1,12 +1,10 @@
 import socket
 import hashlib
 import sys
+import threading 
 
 # Table element object -- Will be used for our dictionary
 dnstable = []
-elements = []
-elem = []
-tmpstr =[]
 str3 = ' '
 
 class tableElement:
@@ -20,30 +18,37 @@ class tableElement:
 
 def TSServer():
     poptable()
+    print('*******')
+    print(socket.gethostname())
+    print(socket.gethostbyname(socket.gethostname()))
     try:
         rss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        rss.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        rss.bind(('', int(sys.argv[1])))
         print('[RS]: Socket was successfully created')
     except socket.error as err:
         sys.exit(format(err))
-
-    rss.bind(('', int(sys.argv[1])))
     rss.listen(1)
-
-    print>>sys.stderr, 'Waiting for connection...'
-    connection, caddr = rss.accept()
-    try:
-        print>> sys.stderr, 'Connected to ', caddr
-        while True:
+    while True:
+        print>>sys.stderr, 'Waiting for connection...'
+        connection, caddr = rss.accept()
+        print>> sys.stderr, 'Connected to ', connection    
+        try:
             message = connection.recv(1024)
-            print("Received " + message +
-                  "from client at: " + str(caddr[0]) + ", " + str(caddr[1]))
-            # TODO: Add the lookup at this point
-            
-            str3 = lookup(message)
-            connection.send(str3)
+            if message:
+                print("Received " + message +
+                    "from client at: " + str(caddr[0]) + ", " + str(caddr[1]))
+                # TODO: Add the lookup at this point
+                str3 = lookup(message)
+                connection.send(str3)
+            else: 
+                print('Client disconnected')
+                connection.close()
+                break
+        finally:
+            connection.close()
 
-    finally:
-        connection.close()
+
 
 def poptable():
     
@@ -73,11 +78,10 @@ def lookup(msg):
         if str1.lower() == str2.lower():
             tmpstr = dnstable[i]
             str3 = ' '.join(tmpstr)
-            print(str3)
             break
         else:
-            str3 = str2 + '- Host Name Not Found'
-            #print(str3)
+            str3 = str(str2 + ' - Error: Host Name Not Found')
+        print(str3)
     return str3
 
     # Printing out the contents of the dnstable
